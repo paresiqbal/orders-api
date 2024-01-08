@@ -26,9 +26,15 @@ func (r *RedisRepo) Insert(ctx context.Context, order model.Order) error {
 
 	key := orderIDKey(order.OrderID)
 
-	res := r.Client.SetNX(ctx, key, string(data), 0)
+	txn = r.Client.TxPipeline()
+
+	res := txn.SetNX(ctx, key, string(data), 0)
 	if err := res.Err(); err != nil {
 		return fmt.Errorf("failed to set key %s: %w", key, err)
+	}
+
+	if err := txn.SAdd(ctx, "orders", key).Err(); err != nil {
+		return fmt.Errorf("failed to add key %s to set orders: %w", key, err)
 	}
 
 	return nil
@@ -85,4 +91,13 @@ func (r *RedisRepo) Update(ctx context.Context, order model.Order) error {
 	}
 
 	return nil
+}
+
+type FindAllPage struct {
+	Size   uint
+	Offset uint
+}
+
+func (r *RedisRepo) FindAll(ctx context.Context) ([]model.Order, error) {
+	return nil, nil
 }
