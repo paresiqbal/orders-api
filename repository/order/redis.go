@@ -55,3 +55,34 @@ func (r *RedisRepo) FindByID(ctx context.Context, id uint64) (model.Order, error
 
 	return order, nil
 }
+
+func (r *RedisRepo) DeleteByID(ctx context.Context, id uint64) error {
+	key := orderIDKey(id)
+
+	err := r.Client.Del(ctx, key).Err()
+	if errors.Is(err, redis.Nil) {
+		return ErrNotExists
+	} else if err != nil {
+		return fmt.Errorf("get order: %w", err)
+	}
+
+	return nil
+}
+
+func (r *RedisRepo) Update(ctx context.Context, order model.Order) error {
+	data, err := json.Marshal(order)
+	if err != nil {
+		return fmt.Errorf("failed to marshal order: %w", err)
+	}
+
+	key := orderIDKey(order.OrderID)
+
+	err = r.Client.SetXX(ctx, key, string(data), 0).Err()
+	if errors.Is(err, redis.Nil) {
+		return ErrNotExists
+	} else if err != nil {
+		return fmt.Errorf("get order: %w", err)
+	}
+
+	return nil
+}
